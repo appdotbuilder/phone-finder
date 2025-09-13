@@ -1,24 +1,34 @@
+import { db } from '../db';
+import { phonesTable, locationsTable } from '../db/schema';
 import { type GetPhoneInput, type Location } from '../schema';
+import { eq, desc } from 'drizzle-orm';
 
 export async function getLocationHistory(input: GetPhoneInput): Promise<Location[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to retrieve the location history for a phone identified by device_id.
-    // It should:
-    // 1. Find the phone by device_id
-    // 2. Get all location records for that phone, ordered by timestamp (newest first)
-    // 3. Return the list of location records
-    // 4. Handle case when phone is not found
-    return Promise.resolve([
-        {
-            id: 1,
-            phone_id: 1,
-            latitude: 0.0, // Placeholder coordinates
-            longitude: 0.0,
-            accuracy: null,
-            altitude: null,
-            battery_level: null,
-            timestamp: new Date(),
-            created_at: new Date()
-        }
-    ] as Location[]);
+  try {
+    // First, find the phone by device_id
+    const phones = await db.select()
+      .from(phonesTable)
+      .where(eq(phonesTable.device_id, input.device_id))
+      .execute();
+
+    // If phone not found, return empty array
+    if (phones.length === 0) {
+      return [];
+    }
+
+    const phone = phones[0];
+
+    // Get all location records for this phone, ordered by timestamp (newest first)
+    const locations = await db.select()
+      .from(locationsTable)
+      .where(eq(locationsTable.phone_id, phone.id))
+      .orderBy(desc(locationsTable.timestamp))
+      .execute();
+
+    // Return the location history
+    return locations;
+  } catch (error) {
+    console.error('Location history retrieval failed:', error);
+    throw error;
+  }
 }
